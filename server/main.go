@@ -16,7 +16,9 @@ func init() {
 }
 
 var jwtSecret = []byte(os.Getenv("KONSERVI_JWT_SECRET"))
+var jwtRefreshSecret = []byte(os.Getenv("KONSERVI_JWT_REFRESH_SECRET"))
 var frontendAddress = []byte(os.Getenv("KONSERVI_FRONTEND_URL"))
+var instanceName = os.Getenv("KONSERVI_INSTANCE_NAME")
 
 func main() {
 	if len(jwtSecret) == 0 || len(frontendAddress) == 0 {

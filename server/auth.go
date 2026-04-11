@@ -19,14 +19,11 @@ func (r LoginRequest) valid() bool {
 
 type Claims struct {
 	UserID string `json:"user_id"`
+	Type   string `json:"type"`
 	jwt.RegisteredClaims
 }
 
 func LoginEndpoint(c *echo.Context) error {
-	return Login(c, jwtSecret)
-}
-
-func Login(c *echo.Context, secret []byte) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil || !req.valid() {
 		return c.JSON(
@@ -43,22 +40,23 @@ func Login(c *echo.Context, secret []byte) error {
 		)
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
-		UserID: req.Username,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-		},
-	})
-
-	tokenString, err := token.SignedString(secret)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "token generataion failed"})
-	}
+	// TODO Update saved username with userID instead
+	accessToken, refreshToken := GenerateTokens(req.Username)
 
 	c.SetCookie(&http.Cookie{
-		Name:     "jwt",
-		Value:    tokenString,
-		Expires:  time.Now().Add(24 * time.Hour),
+		Name:     "access_token",
+		Value:    accessToken,
+		Expires:  time.Now().Add(1 * time.Hour),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	})
+
+	c.SetCookie(&http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Expires:  time.Now().Add(30 * 24 * time.Hour),
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
@@ -67,3 +65,74 @@ func Login(c *echo.Context, secret []byte) error {
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "logged in"})
 }
+
+func RefreshTokenEndpoint(c *echo.Context) error {
+	refreshCookie, err := c.Cookie("refresh_token")
+	if err != nil {
+		return c.JSON(
+			http.StatusUnauthorized,
+			map[string]string{"error": "refresh token missing"},
+		)
+	}
+
+	claims := &Claims{}
+	_, err = jwt.ParseWithClaims(
+		refreshCookie.Value,
+		claims,
+		func(token *jwt.Token) (interface{}, error) {
+			return jwtRefreshSecret, nil
+		},
+	)
+
+	if err != nil || claims.Type != "refresh" {
+		return c.JSON(
+			http.StatusUnauthorized,
+			map[string]string{"error": "invalid refresh token"},
+		)
+	}
+
+	newAccessToken, _ := GenerateTokens(claims.UserID)
+
+	c.SetCookie(&http.Cookie{
+		Name: "access_token",
+		Value:    newAccessToken,
+		Expires:  time.Now().Add(1 * time.Hour),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	})
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "token refreshed"})
+}
+
+func GenerateTokens(userID string) (accessToken, refreshToken string) {
+	accessTokenClaims := Claims{
+		UserID: userID,
+		Type:   "access",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    instanceName,
+		},
+	}
+
+	refreshTokenClaims := Claims{
+		UserID: userID,
+		Type:   "refresh",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * 24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    instanceName,
+		},
+	}
+
+	accessTokenInit := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokenClaims)
+	accessToken, _ = accessTokenInit.SignedString(jwtSecret)
+
+	refreshTokenInit := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims)
+	refreshToken, _ = refreshTokenInit.SignedString(jwtSecret)
+
+	return accessToken, refreshToken
+}
+

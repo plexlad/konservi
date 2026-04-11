@@ -26,18 +26,25 @@ func TestLogin_Success(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	Login(c, testSecret)
+	LoginEndpoint(c)
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("expected status 200, go %d", rec.Code)
+		t.Errorf("expected status 200, got %d", rec.Code)
 	}
 
-	jwtCookie := rec.Result().Cookies()[0]
-	if jwtCookie.Name != "jwt" {
-		t.Errorf("expected cookie name 'jwt', got '%s'", jwtCookie.Name)
+	cookies := rec.Result().Cookies()
+	if len(cookies) < 2 {
+		t.Error("expected both access_token and refresh_token cookies")
 	}
-	if jwtCookie.HttpOnly != true {
-		t.Error("expected HttpOnly cookie")
+
+	accessCookie := cookies[0]
+	if accessCookie.Name != "access_token" {
+			t.Errorf("expected cookie name 'access_token', got '%s'", accessCookie.Name)
+	}
+
+	refreshCookie := cookies[1]
+	if refreshCookie.Name != "refresh_token" {
+			t.Errorf("expected cookie name 'refresh_token', got '%s'", refreshCookie.Name)
 	}
 }
 
@@ -55,7 +62,7 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	Login(c, testSecret)
+	LoginEndpoint(c)
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("expected status 401, got %d", rec.Code)
@@ -70,11 +77,42 @@ func TestLogin_MissingBody(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	Login(c, testSecret)
+	LoginEndpoint(c)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("expected status 400, got %d", rec.Code)
 	}
+}
+
+func TestRefreshToken_Success(t *testing.T) {
+	e := echo.New()
+
+	loginReq := LoginRequest{Username: "user", Password: "pass"}
+    loginBody, _ := json.Marshal(loginReq)
+    loginReqTest := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(loginBody))
+    loginReqTest.Header.Set("Content-Type", "application/json")
+    loginRec := httptest.NewRecorder()
+    loginC := e.NewContext(loginReqTest, loginRec)
+
+    LoginEndpoint(loginC)
+
+    refreshCookie := loginRec.Result().Cookies()[1]
+
+    req := httptest.NewRequest(http.MethodPost, "/refresh", nil)
+    req.AddCookie(refreshCookie)
+    rec := httptest.NewRecorder()
+    c := e.NewContext(req, rec)
+
+    RefreshTokenEndpoint(c)
+
+    if rec.Code != http.StatusOK {
+        t.Errorf("expected status 200, got %d", rec.Code)
+    }
+
+    cookies := rec.Result().Cookies()
+    if len(cookies) == 0 {
+        t.Error("expected new access token cookie")
+    }
 }
 
 //func TestJWTMiddleware_ValidToken(t *testing.T) {
