@@ -10,8 +10,6 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-var testSecret = []byte("dont commit pls")
-
 func TestLogin_Success(t *testing.T) {
 	e := echo.New()
 
@@ -21,7 +19,7 @@ func TestLogin_Success(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/token/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -57,7 +55,7 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/token/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -94,7 +92,7 @@ func TestRefreshToken_Success(t *testing.T) {
 	loginReq := LoginRequest{Username: "user", Password: "pass"}
 	loginBody, _ := json.Marshal(loginReq)
 	loginReqTest := httptest.NewRequest(
-		http.MethodPost, "/login",
+		http.MethodPost, "/token/login",
 		bytes.NewReader(loginBody),
 	)
 	loginReqTest.Header.Set("Content-Type", "application/json")
@@ -105,7 +103,7 @@ func TestRefreshToken_Success(t *testing.T) {
 
 	refreshCookie := loginRec.Result().Cookies()[1]
 
-	req := httptest.NewRequest(http.MethodPost, "/refresh", nil)
+	req := httptest.NewRequest(http.MethodPost, "/token/refresh", nil)
 	req.AddCookie(refreshCookie)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -129,7 +127,7 @@ func TestJWTMiddleware_ValidToken(t *testing.T) {
 	loginBody, _ := json.Marshal(LoginReq)
 	loginReqTest := httptest.NewRequest(
 		http.MethodPost,
-		"/login",
+		"/token/login",
 		bytes.NewReader(loginBody),
 	)
 	loginReqTest.Header.Set("Content-Type", "application/json")
