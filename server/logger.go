@@ -10,10 +10,10 @@ import (
 )
 
 var logger = log.NewWithOptions(os.Stderr, log.Options{
-	Formatter: log.JSONFormatter,
+	Formatter:       log.JSONFormatter,
 	ReportTimestamp: true,
-	ReportCaller: true,
-	TimeFormat: time.RFC822Z,
+	ReportCaller:    true,
+	TimeFormat:      time.RFC822Z,
 })
 
 func HTTPErrorHandler(c *echo.Context, err error) {
