@@ -41,6 +41,7 @@ func main() {
 	})
 
 	e.POST("/login", LoginEndpoint)
+	e.POST("/refresh", RefreshTokenEndpoint)
 
 	if err := e.Start(":8080"); err != nil {
 		logger.Error("failed to start server", "error", err)
