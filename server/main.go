@@ -1,11 +1,12 @@
 package main
 
 import (
-	"os"
 	"net/http"
+	"os"
 
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 )
 
 func init() {
@@ -14,19 +15,25 @@ func init() {
 	}
 }
 
-var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+var jwtSecret = []byte(os.Getenv("KONSERVI_JWT_SECRET"))
+var frontendAddress = []byte(os.Getenv("KONSERVI_FRONTEND_URL"))
 
 func main() {
 	e := echo.New()
 	e.HTTPErrorHandler = HTTPErrorHandler
 	e.Use(EchoLogger)
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"http://localhost:5173"}, // Allow frontend
+		AllowCredentials: true,
+	}))
 
 	e.GET("/", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!")
 	})
 
-	if err := e.Start(":1323"); err != nil {
-		e.Logger.Error("failed to start server", "error", err)
+	e.POST("/login", Login)
 
+	if err := e.Start(":8080"); err != nil {
+		logger.Error("failed to start server", "error", err)
 	}
 }
