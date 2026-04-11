@@ -22,6 +22,10 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+func LoginEndpoint(c *echo.Context) error {
+	return Login(c, jwtSecret)
+}
+
 func Login(c *echo.Context, secret []byte) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil || !req.valid() {

@@ -19,6 +19,13 @@ var jwtSecret = []byte(os.Getenv("KONSERVI_JWT_SECRET"))
 var frontendAddress = []byte(os.Getenv("KONSERVI_FRONTEND_URL"))
 
 func main() {
+	if len(jwtSecret) == 0 || len(frontendAddress) == 0 {
+		logger.Fatal("KONSERVI_JWT_SECRET and KONSERVI_FRONTEND_URL are necessary.")
+	}
+	if len(jwtSecret) < 32 {
+		logger.Warn("KONSERVI_JWT_SECRET should be at least 32 characters long.")
+	}
+
 	e := echo.New()
 	e.HTTPErrorHandler = HTTPErrorHandler
 	e.Use(EchoLogger)
@@ -31,7 +38,7 @@ func main() {
 		return c.String(http.StatusOK, "Hello, World!")
 	})
 
-	e.POST("/login", Login)
+	e.POST("/login", LoginEndpoint)
 
 	if err := e.Start(":8080"); err != nil {
 		logger.Error("failed to start server", "error", err)
