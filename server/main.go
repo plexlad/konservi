@@ -30,18 +30,26 @@ func main() {
 
 	e := echo.New()
 	e.HTTPErrorHandler = HTTPErrorHandler
+	e.Use(middleware.Recover())
 	e.Use(EchoLogger)
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://localhost:5173"}, // Allow frontend
+		AllowOrigins:     []string{"http://localhost:5173"}, // Allow frontend
 		AllowCredentials: true,
 	}))
 
-	e.GET("/", func(c *echo.Context) error {
-		return c.String(http.StatusOK, "Hello, World!")
+	e.GET("/health", func(c *echo.Context) error {
+		return c.String(http.StatusOK, "Status 200 OK")
 	})
 
-	e.POST("/login", LoginEndpoint)
-	e.POST("/refresh", RefreshTokenEndpoint)
+	token := e.Group("/token")
+	token.POST("/login", LoginEndpoint)
+	token.POST("/refresh", RefreshTokenEndpoint)
+
+	api := e.Group("/api")
+	api.Use(JWTMiddleware)
+	api.GET("/", func(c *echo.Context) error {
+		return c.String(http.StatusOK, "Status 200 OK")
+	})
 
 	if err := e.Start(":8080"); err != nil {
 		logger.Error("failed to start server", "error", err)

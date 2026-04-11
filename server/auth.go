@@ -94,7 +94,7 @@ func RefreshTokenEndpoint(c *echo.Context) error {
 	newAccessToken, _ := GenerateTokens(claims.UserID)
 
 	c.SetCookie(&http.Cookie{
-		Name: "access_token",
+		Name:     "access_token",
 		Value:    newAccessToken,
 		Expires:  time.Now().Add(1 * time.Hour),
 		HttpOnly: true,
@@ -104,6 +104,31 @@ func RefreshTokenEndpoint(c *echo.Context) error {
 	})
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "token refreshed"})
+}
+
+func JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c *echo.Context) error {
+		token, err := c.Cookie("access_token")
+		if err != nil {
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		}
+
+		claims := &Claims{}
+		_, err = jwt.ParseWithClaims(token.Value, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtSecret, nil
+		})
+
+		if err != nil || claims.Type != "access" {
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid token"})
+		}
+
+		if claims.UserID == "" {
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid token: missing user_id"})
+		}
+
+		c.Set("user_id", claims.UserID)
+		return next(c)
+	}
 }
 
 func GenerateTokens(userID string) (accessToken, refreshToken string) {
@@ -135,4 +160,3 @@ func GenerateTokens(userID string) (accessToken, refreshToken string) {
 
 	return accessToken, refreshToken
 }
-
