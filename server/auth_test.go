@@ -10,8 +10,20 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
+var (
+	testSecret        = []byte("test-secret-32-chars-long-enough")
+	testRefreshSecret = []byte("test-refresh-secret-32-chars")
+)
+
+func setupTestSecrets() {
+	jwtSecret = testSecret
+	jwtRefreshSecret = testRefreshSecret
+}
+
 func TestLogin_Success(t *testing.T) {
 	e := echo.New()
+
+	setupTestSecrets()
 
 	reqBody := LoginRequest{
 		Username: "user",
@@ -89,19 +101,28 @@ func TestLogin_MissingBody(t *testing.T) {
 func TestRefreshToken_Success(t *testing.T) {
 	e := echo.New()
 
+	setupTestSecrets()
+
 	loginReq := LoginRequest{Username: "user", Password: "pass"}
 	loginBody, _ := json.Marshal(loginReq)
-	loginReqTest := httptest.NewRequest(
-		http.MethodPost, "/token/login",
-		bytes.NewReader(loginBody),
-	)
+	loginReqTest := httptest.NewRequest(http.MethodPost, "/token/login", bytes.NewReader(loginBody))
 	loginReqTest.Header.Set("Content-Type", "application/json")
 	loginRec := httptest.NewRecorder()
 	loginC := e.NewContext(loginReqTest, loginRec)
 
 	LoginEndpoint(loginC)
 
-	refreshCookie := loginRec.Result().Cookies()[1]
+	var refreshCookie *http.Cookie
+	for _, cookie := range loginRec.Result().Cookies() {
+		if cookie.Name == "refresh_token" {
+			refreshCookie = cookie
+			break
+		}
+	}
+
+	if refreshCookie == nil {
+		t.Fatal("refresh_token cookie not found")
+	}
 
 	req := httptest.NewRequest(http.MethodPost, "/token/refresh", nil)
 	req.AddCookie(refreshCookie)
@@ -112,6 +133,7 @@ func TestRefreshToken_Success(t *testing.T) {
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("expected status 200, got %d", rec.Code)
+		t.Logf("response: %s", rec.Body.String())
 	}
 
 	cookies := rec.Result().Cookies()

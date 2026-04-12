@@ -156,7 +156,7 @@ func GenerateTokens(userID string) (accessToken, refreshToken string) {
 	accessToken, _ = accessTokenInit.SignedString(jwtSecret)
 
 	refreshTokenInit := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims)
-	refreshToken, _ = refreshTokenInit.SignedString(jwtSecret)
+	refreshToken, _ = refreshTokenInit.SignedString(jwtRefreshSecret)
 
 	return accessToken, refreshToken
 }
