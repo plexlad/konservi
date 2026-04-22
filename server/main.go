@@ -9,11 +9,12 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 )
 
-var jwtSecret []byte
-var jwtRefreshSecret []byte
+var appPort string
 var frontendAddress string
 var instanceName string
-var appPort string
+var jwtSecret []byte
+var jwtRefreshSecret []byte
+var sqlDbAddress string
 
 func init() {
 	if err := godotenv.Load(); err != nil {
@@ -24,6 +25,7 @@ func init() {
 	frontendAddress = os.Getenv("KONSERVI_FRONTEND_ADDRESS")
 	instanceName = os.Getenv("KONSERVI_INSTANCE_NAME")
 	appPort = os.Getenv("KONSERVI_PORT")
+	sqlDbAddress = os.Getenv("KONSERVI_DATABASE_URL")
 }
 
 func isEnvValid() bool {
@@ -37,10 +39,12 @@ func isEnvValid() bool {
 func main() {
 	if !isEnvValid() {
 		logger.Fatal("Check your .env files or environment variables.",
-            "jwtSecret", len(jwtSecret),
-            "refreshSecret", len(jwtRefreshSecret),
-            "frontendAddress", len(frontendAddress),
-            "instanceName", len(instanceName),
+            "KONSERVI_JWT_SECRET", len(jwtSecret),
+            "KONSERVI_REFRESH_SECRET", len(jwtRefreshSecret),
+            "KONSERVI_FRONTEND_ADDRESS", len(frontendAddress),
+            "KONSERVI_INSTANCE_NAME", len(instanceName),
+						"KONSERVI_PORT", len(appPort),
+						"KONSERVI_DB_URL", len(sqlDbAddress),
         )
 	}
 	if len(jwtSecret) < 32 {

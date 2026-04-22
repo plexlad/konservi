@@ -1,7 +1,6 @@
 {
   description = "konservi dev and testing environment";
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+  inputs = { nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
   outputs = { self, nixpkgs, flake-utils }:
@@ -23,18 +22,19 @@
           '';
       in
       {
-        #devShells.default = pkgs.mkShell {
-        #  buildInputs = with pkgs; [
-        #    go
-        #    nodejs_25
-        #    pnpm
-        #    air
-        #    golangci-lint
-        #    delve
-        #  ];
+        devShells.default = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            go
+            nodejs_25
+            pnpm
+            air
+            golangci-lint
+            delve
+            ent-go
+          ];
 
-        #  shellHook = help-script;
-        #};
+          shellHook = help-script;
+        };
 
         packages.default = pkgs.buildGoModule {
           name = "konservi-server";
