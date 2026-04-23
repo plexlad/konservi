@@ -20,6 +20,7 @@
             echo "→ dev, test, backend, frontend"
             echo "run commands with 'nix run .#command'"
           '';
+        db-compile = "go run -mod=mod entgo.io/ent/cmd/ent generate --target ./ent ./schema";
       in
       {
         devShells.default = pkgs.mkShell {
@@ -62,7 +63,10 @@
           };
           test = flake-utils.lib.mkApp {
             drv = pkgs.writeShellScriptBin "test" ''
-              cd server && go test -v ./... && cd ../client && pnpm test
+              cd server
+              rm -rf ent/
+              ${db-compile}
+              go test -v ./... && cd ../client && pnpm test
             '';
           };
           dev = flake-utils.lib.mkApp {

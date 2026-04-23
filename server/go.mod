@@ -9,6 +9,9 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v5 v5.1.0
+	github.com/lib/pq v1.12.3
+	github.com/mattn/go-sqlite3 v1.14.28
+	golang.org/x/crypto v0.0.0-20220517005047-85d78b3ac167
 )
 
 require (

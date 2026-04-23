@@ -13,7 +13,7 @@
         dbUser = "postgres";
         dbPass = "postgres";
         dbPort = "5432";
-        dbUrl = "postgres://${dbUser}:${dbPass}@localhost:${dbPort}/${dbName}?sslmode=disable";
+        dbUrl = "postgres://${dbUser}:${dbPass}@localhost:${dbPort}/${dbName}?sslmode=disable&host=/tmp";
 
         # Starts a temporary postgres instance in /tmp
         start-db = pkgs.writeShellScriptBin "start-db" ''
@@ -23,13 +23,14 @@
           if [ ! -d "$PGDATA" ]; then
             echo "Initializing postgres database..."
             ${pkgs.postgresql}/bin/initdb -D "$PGDATA" --auth=trust --no-locale --encoding=UTF8
+            sed -i "s|#unix_socket_directories = '/run/postgresql'|unix_socket_directories = '/tmp'|" "$PGDATA/postgresql.conf"
           fi
 
           if ! ${pkgs.postgresql}/bin/pg_ctl -D "$PGDATA" status > /dev/null 2>&1; then
             echo "Starting postgres..."
             ${pkgs.postgresql}/bin/pg_ctl -D "$PGDATA" -l /tmp/konservi-pg.log start
-            sleep 1
-            ${pkgs.postgresql}/bin/createdb -p ${dbPort} ${dbName} 2>/dev/null || true
+            sleep 2
+            ${pkgs.postgresql}/bin/createdb -h /tmp -p ${dbPort} ${dbName} 2>/dev/null || true
             echo "Postgres started on port ${dbPort}"
           else
             echo "Postgres already running"
@@ -50,7 +51,7 @@
         '';
 
         generate = pkgs.writeShellScriptBin "generate" ''
-          cd server
+          cd "$(git rev-parse --show-toplevel)/server"
           echo "Running ent codegen..."
           go run -mod=mod entgo.io/ent/cmd/ent generate ./ent/schema
           echo "Done."
@@ -122,7 +123,8 @@
             drv = pkgs.writeShellScriptBin "test-backend" ''
               export KONSERVI_DB_URL="${dbUrl}"
               ${start-db}/bin/start-db
-              cd server && go test -v ./ent/schema/...
+              cd "$(git rev-parse --show-toplevel)/server"
+              go test -v ./ent/schema/...
             '';
           };
 
